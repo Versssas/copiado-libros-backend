@@ -37,4 +37,18 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+router.put('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nombre, cuit, telefono } = req.body;
+        const resultado = await pool.query(
+            'UPDATE clientes SET nombre=$1, cuit=$2, telefono=$3 WHERE id=$4 RETURNING *',
+            [nombre, cuit, telefono, id]
+        );
+        res.json(resultado.rows[0]);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;
