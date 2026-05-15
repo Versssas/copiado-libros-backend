@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 // Usuario hardcodeado por ahora
-const USUARIO = 'admin';
+const USUARIO = 'walter';
 const PASSWORD_HASH = bcrypt.hashSync('0161', 10);
 
 router.post('/login', async (req, res) => {
