@@ -15,10 +15,10 @@ router.get('/', async (req, res) => {
 // Agregar cliente
 router.post('/', async (req, res) => {
     try {
-        const { nombre, cuit } = req.body;
+        const { nombre, cuit, telefono } = req.body;
         const resultado = await pool.query(
-            'INSERT INTO clientes (nombre, cuit) VALUES ($1, $2) RETURNING *',
-            [nombre, cuit]
+            'INSERT INTO clientes (nombre, cuit, telefono) VALUES ($1, $2, $3) RETURNING *',
+            [nombre, cuit, telefono]
         );
         res.json(resultado.rows[0]);
     } catch (error) {
