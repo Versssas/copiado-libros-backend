@@ -34,10 +34,10 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { cliente_id, fecha, fecha_entrega, hojas, precio_hoja, total, estado } = req.body;
+        const { cliente_id, fecha, fecha_entrega, hojas, precio_hoja, total, estado, iva, total_con_iva } = req.body;
         const resultado = await pool.query(
-            'UPDATE trabajos SET cliente_id=$1, fecha=$2, fecha_entrega=$3, hojas=$4, precio_hoja=$5, total=$6, estado=$7 WHERE id=$8 RETURNING *',
-            [cliente_id, fecha, fecha_entrega, hojas, precio_hoja, total, estado, id]
+            'UPDATE trabajos SET cliente_id=$1, fecha=$2, fecha_entrega=$3, hojas=$4, precio_hoja=$5, total=$6, estado=$7, iva=$8, total_con_iva=$9 WHERE id=$10 RETURNING *',
+            [cliente_id, fecha, fecha_entrega, hojas, precio_hoja, total, estado, iva, total_con_iva, id]
         );
         res.json(resultado.rows[0]);
     } catch (error) {
