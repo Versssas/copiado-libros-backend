@@ -20,17 +20,16 @@ router.get('/', async (req, res) => {
 // Agregar trabajo
 router.post('/', async (req, res) => {
     try {
-        const { cliente_id, fecha, fecha_entrega, hojas, precio_hoja, total, estado } = req.body;
+        const { cliente_id, fecha, fecha_entrega, hojas, precio_hoja, total, estado, iva, total_con_iva } = req.body;
         const resultado = await pool.query(
-            'INSERT INTO trabajos (cliente_id, fecha, fecha_entrega, hojas, precio_hoja, total, estado) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-            [cliente_id, fecha, fecha_entrega, hojas, precio_hoja, total, estado]
+            'INSERT INTO trabajos (cliente_id, fecha, fecha_entrega, hojas, precio_hoja, total, estado, iva, total_con_iva) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+            [cliente_id, fecha, fecha_entrega, hojas, precio_hoja, total, estado, iva, total_con_iva]
         );
         res.json(resultado.rows[0]);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
-
 // Editar trabajo
 router.put('/:id', async (req, res) => {
     try {
