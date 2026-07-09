@@ -27,7 +27,11 @@ router.post('/', async (req, res) => {
         );
         res.json(resultado.rows[0]);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        if (error.code === '23505') { // Código de error para violación de restricción única
+            res.status(400).json({ error: 'El número de factura ya existe' });
+        } else {
+            res.status(500).json({ error: error.message });
+        }
     }
 });
 // Editar trabajo
@@ -41,7 +45,11 @@ router.put('/:id', async (req, res) => {
         );
         res.json(resultado.rows[0]);
     } catch (error) {
+        if (error.code === '23505') { // Código de error para violación de restricción única
+            res.status(400).json({ error: 'El número de factura ya existe' });
+        } else {   
         res.status(500).json({ error: error.message });
+        }
     }
 });
 
