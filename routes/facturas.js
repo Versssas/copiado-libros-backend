@@ -78,7 +78,7 @@ router.post('/emitir', async (req, res) => {
                 }
             }
         });
-
+        console.log('Respuesta WSFE:', JSON.stringify(result[0], null, 2));
         const det = result[0].FECAESolicitudResult.FeDetResp.FECAEDetResponse;
         
         if (det.Resultado === 'A') {
