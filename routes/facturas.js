@@ -79,8 +79,7 @@ router.post('/emitir', async (req, res) => {
             }
         });
         console.log('Respuesta WSFE:', JSON.stringify(result[0], null, 2));
-        const det = result[0].FECAESolicitudResult.FeDetResp.FECAEDetResponse;
-        
+        const det = result[0].FECAESolicitarResult.FeDetResp.FECAEDetResponse[0];        
         if (det.Resultado === 'A') {
             // Guardar CAE en la base de datos
             await pool.query(
