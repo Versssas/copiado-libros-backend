@@ -30,7 +30,7 @@ router.post('/emitir', async (req, res) => {
         // Obtener último número de comprobante
         const ultimoResult = await client.FECompUltimoAutorizadoAsync({
             Auth: { Token: token, Sign: sign, Cuit: CUIT },
-            PtoVta: 1,
+            PtoVta: 5,
             CbteTipo: tipo_factura
         });
 
@@ -48,7 +48,7 @@ router.post('/emitir', async (req, res) => {
             FeCAEReq: {
                 FeCabReq: {
                     CantReg: 1,
-                    PtoVta: 1,
+                    PtoVta: 5,
                     CbteTipo: tipo_factura
                 },
                 FeDetReq: {
