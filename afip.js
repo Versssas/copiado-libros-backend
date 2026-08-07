@@ -2,7 +2,7 @@ const soap = require('soap');
 const fs = require('fs');
 const https = require('https');
 const crypto = require('crypto');
-
+crypto.setFips(0);
 const WSAA_URL = 'https://wsaa.afip.gov.ar/ws/services/LoginCms?wsdl';
 const WSFE_URL = 'https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL';
 
@@ -26,7 +26,11 @@ async function getToken() {
 
     const sign = crypto.createSign('SHA256');
     sign.update(tra);
-    const signature = sign.sign(KEY, 'base64');
+    const signature = sign.sign({
+    key: KEY,
+    format: 'pem',
+    type: 'pkcs8'
+}, 'base64');
 
     const cms = Buffer.from(tra).toString('base64');
 
