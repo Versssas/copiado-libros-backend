@@ -43,7 +43,7 @@ router.post('/emitir', async (req, res) => {
         const iva = t.iva ? total - neto : 0;
 
         // Emitir factura
-        const result = await client.FECAESolicitudAsync({
+        const result = await client.FECAESolicitarAsync({
             Auth: { Token: token, Sign: sign, Cuit: CUIT },
             FeCAEReq: {
                 FeCabReq: {
