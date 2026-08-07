@@ -6,8 +6,8 @@ crypto.setFips(0);
 const WSAA_URL = 'https://wsaa.afip.gov.ar/ws/services/LoginCms?wsdl';
 const WSFE_URL = 'https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL';
 
-const CERT = process.env.AFIP_CERT;
-const KEY = process.env.AFIP_KEY;
+const KEY = process.env.AFIP_KEY?.replace(/\\n/g, '\n');
+const CERT = process.env.AFIP_CERT?.replace(/\\n/g, '\n');
 const CUIT = process.env.AFIP_CUIT;
 
 async function getToken() {
@@ -29,7 +29,7 @@ async function getToken() {
     const signature = sign.sign({
     key: KEY,
     format: 'pem',
-    type: 'pkcs8'
+    type: 'pkcs1'
 }, 'base64');
 
     const cms = Buffer.from(tra).toString('base64');
