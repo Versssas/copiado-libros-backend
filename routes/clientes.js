@@ -16,6 +16,17 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const { nombre, cuit, telefono } = req.body;
+        
+        // Verificar si ya existe por nombre o cuit
+        const existe = await pool.query(
+            'SELECT id FROM clientes WHERE LOWER(nombre) = LOWER($1) OR cuit = $2',
+            [nombre, cuit]
+        );
+        
+        if (existe.rows.length > 0) {
+            return res.status(400).json({ error: 'Ya existe un cliente con ese nombre o CUIT' });
+        }
+        
         const resultado = await pool.query(
             'INSERT INTO clientes (nombre, cuit, telefono) VALUES ($1, $2, $3) RETURNING *',
             [nombre, cuit, telefono]
