@@ -9,7 +9,7 @@ router.post('/emitir', async (req, res) => {
         const { trabajo_id, tipo_factura } = req.body;
 
         const trabajo = await pool.query(
-            'SELECT t.*, c.nombre as cliente_nombre, c.cuit as cliente_cuit FROM trabajos t JOIN clientes c ON t.cliente_id = c.id WHERE t.id = $1',
+            'SELECT t.*, c.nombre as cliente_nombre, c.cuit as cliente_cuit, c.condicion_iva FROM trabajos t JOIN clientes c ON t.cliente_id = c.id WHERE t.id = $1',
             [trabajo_id]
         );
 
@@ -61,7 +61,7 @@ router.post('/emitir', async (req, res) => {
                         ImpTrib: 0,
                         MonId: 'PES',
                         MonCotiz: 1,
-                        CondicionIVAReceptorId: 1,
+                        CondicionIVAReceptorId: t.condicion_iva || 1,
                         Iva: t.iva ? {
                             AlicIva: {
                                 Id: 5,
