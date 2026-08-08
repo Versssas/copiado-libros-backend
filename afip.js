@@ -1,11 +1,11 @@
 const soap = require('soap');
 const forge = require('node-forge');
 
-const WSAA_URL = 'https://wsaahomo.afip.gov.ar/ws/services/LoginCms?wsdl';
-const WSFE_URL = 'https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL';
+const WSAA_URL = 'https://wsaa.afip.gov.ar/ws/services/LoginCms?wsdl';
+const WSFE_URL = 'https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL';
 
-const CERT = process.env.AFIP_CERT_TEST?.replace(/\\n/g, '\n');
-const KEY = process.env.AFIP_KEY_TEST?.replace(/\\n/g, '\n');
+const CERT = process.env.AFIP_CERT?.replace(/\\n/g, '\n');
+const KEY = process.env.AFIP_KEY?.replace(/\\n/g, '\n');
 const CUIT = process.env.AFIP_CUIT;
 
 let tokenCache = null;
