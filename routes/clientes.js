@@ -15,9 +15,8 @@ router.get('/', async (req, res) => {
 // Agregar cliente
 router.post('/', async (req, res) => {
     try {
-        const { nombre, cuit, telefono } = req.body;
+        const { nombre, cuit, telefono, condicion_iva } = req.body;
         
-        // Verificar si ya existe por nombre o cuit
         const existe = await pool.query(
             'SELECT id FROM clientes WHERE LOWER(nombre) = LOWER($1) OR cuit = $2',
             [nombre, cuit]
@@ -28,8 +27,8 @@ router.post('/', async (req, res) => {
         }
         
         const resultado = await pool.query(
-            'INSERT INTO clientes (nombre, cuit, telefono) VALUES ($1, $2, $3) RETURNING *',
-            [nombre, cuit, telefono]
+            'INSERT INTO clientes (nombre, cuit, telefono, condicion_iva) VALUES ($1, $2, $3, $4) RETURNING *',
+            [nombre, cuit, telefono, condicion_iva || 1]
         );
         res.json(resultado.rows[0]);
     } catch (error) {
@@ -51,10 +50,10 @@ router.delete('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { nombre, cuit, telefono } = req.body;
+        const { nombre, cuit, telefono, condicion_iva } = req.body;
         const resultado = await pool.query(
-            'UPDATE clientes SET nombre=$1, cuit=$2, telefono=$3 WHERE id=$4 RETURNING *',
-            [nombre, cuit, telefono, id]
+            'UPDATE clientes SET nombre=$1, cuit=$2, telefono=$3, condicion_iva=$4 WHERE id=$5 RETURNING *',
+            [nombre, cuit, telefono, condicion_iva || 1, id]
         );
         res.json(resultado.rows[0]);
     } catch (error) {
