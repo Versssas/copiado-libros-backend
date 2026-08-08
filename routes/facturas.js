@@ -7,9 +7,7 @@ const pool = require('../db');
 router.post('/emitir', async (req, res) => {
     try {
         const { trabajo_id, tipo_factura } = req.body;
-        // tipo_factura: 1=A, 6=B, 11=C
 
-        // Obtener trabajo
         const trabajo = await pool.query(
             'SELECT t.*, c.nombre as cliente_nombre, c.cuit as cliente_cuit FROM trabajos t JOIN clientes c ON t.cliente_id = c.id WHERE t.id = $1',
             [trabajo_id]
@@ -20,14 +18,11 @@ router.post('/emitir', async (req, res) => {
         }
 
         const t = trabajo.rows[0];
+        const docNro = parseInt(t.cliente_cuit.replace(/[-\s]/g, ''));
 
-        // Obtener token de ARCA
         const { token, sign } = await getToken();
-
-        // Conectar al WSFE
         const client = await soap.createClientAsync(WSFE_URL);
 
-        // Obtener último número de comprobante
         const ultimoResult = await client.FECompUltimoAutorizadoAsync({
             Auth: { Token: token, Sign: sign, Cuit: CUIT },
             PtoVta: 5,
@@ -42,7 +37,6 @@ router.post('/emitir', async (req, res) => {
         const neto = t.iva ? Number(t.total) : total;
         const iva = t.iva ? total - neto : 0;
 
-        // Emitir factura
         const result = await client.FECAESolicitarAsync({
             Auth: { Token: token, Sign: sign, Cuit: CUIT },
             FeCAEReq: {
@@ -55,7 +49,7 @@ router.post('/emitir', async (req, res) => {
                     FECAEDetRequest: {
                         Concepto: 1,
                         DocTipo: 80,
-                        DocNro: t.cliente_cuit,
+                        DocNro: docNro,
                         CbteDesde: nuevoNro,
                         CbteHasta: nuevoNro,
                         CbteFch: fecha,
@@ -67,6 +61,7 @@ router.post('/emitir', async (req, res) => {
                         ImpTrib: 0,
                         MonId: 'PES',
                         MonCotiz: 1,
+                        CondicionIVAReceptorId: 1,
                         Iva: t.iva ? {
                             AlicIva: {
                                 Id: 5,
@@ -78,10 +73,11 @@ router.post('/emitir', async (req, res) => {
                 }
             }
         });
+
         console.log('Respuesta WSFE:', JSON.stringify(result[0], null, 2));
-        const det = result[0].FECAESolicitarResult.FeDetResp.FECAEDetResponse[0];        
+        const det = result[0].FECAESolicitarResult.FeDetResp.FECAEDetResponse[0];
+
         if (det.Resultado === 'A') {
-            // Guardar CAE en la base de datos
             await pool.query(
                 'UPDATE trabajos SET nro_factura = $1 WHERE id = $2',
                 [`${nuevoNro}`, trabajo_id]
@@ -94,7 +90,10 @@ router.post('/emitir', async (req, res) => {
                 nro_comprobante: nuevoNro
             });
         } else {
-            res.status(400).json({ error: 'ARCA rechazó la factura', obs: det.Observaciones });
+            res.status(400).json({ 
+                error: 'ARCA rechazó la factura', 
+                obs: det.Observaciones 
+            });
         }
 
     } catch (error) {
