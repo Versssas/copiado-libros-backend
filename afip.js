@@ -8,9 +8,16 @@ const CERT = process.env.AFIP_CERT_TEST?.replace(/\\n/g, '\n');
 const KEY = process.env.AFIP_KEY_TEST?.replace(/\\n/g, '\n');
 const CUIT = process.env.AFIP_CUIT;
 
+let tokenCache = null;
+let tokenExpira = null;
+
 async function getToken() {
+    if (tokenCache && tokenExpira && new Date() < tokenExpira) {
+        return tokenCache;
+    }
+
     const now = new Date();
-    const expire = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const expire = new Date(now.getTime() + 12 * 60 * 60 * 1000);
     
     const tra = `<?xml version="1.0" encoding="UTF-8"?>
 <loginTicketRequest version="1.0">
@@ -46,6 +53,9 @@ async function getToken() {
     const response = result[0].loginCmsReturn;
     const token = response.match(/<token>(.*?)<\/token>/)[1];
     const sign = response.match(/<sign>(.*?)<\/sign>/)[1];
+    
+    tokenCache = { token, sign };
+    tokenExpira = expire;
     
     return { token, sign };
 }
