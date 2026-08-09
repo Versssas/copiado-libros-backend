@@ -1,7 +1,7 @@
 const soap = require('soap');
 const forge = require('node-forge');
 
-const ES_TESTING = process.env.AFIP_ENV === 'testing';
+const ES_TESTING = process.env.AFIP_MODO === 'testing';
 
 const WSAA_URL = ES_TESTING
     ? 'https://wsaahomo.afip.gov.ar/ws/services/LoginCms?wsdl'
