@@ -1,11 +1,18 @@
 const soap = require('soap');
 const forge = require('node-forge');
 
-const WSAA_URL = 'https://wsaahomo.afip.gov.ar/ws/services/LoginCms?wsdl';
-const WSFE_URL = 'https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL';
+const ES_TESTING = process.env.AFIP_ENV === 'testing';
 
-const CERT = process.env.AFIP_CERT_TEST?.replace(/\\n/g, '\n');
-const KEY = process.env.AFIP_KEY_TEST?.replace(/\\n/g, '\n');const CUIT = process.env.AFIP_CUIT;
+const WSAA_URL = ES_TESTING
+    ? 'https://wsaahomo.afip.gov.ar/ws/services/LoginCms?wsdl'
+    : 'https://wsaa.afip.gov.ar/ws/services/LoginCms?wsdl';
+const WSFE_URL = ES_TESTING
+    ? 'https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL'
+    : 'https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL';
+
+const CERT = (ES_TESTING ? process.env.AFIP_CERT_TEST : process.env.AFIP_CERT)?.replace(/\\n/g, '\n');
+const KEY = (ES_TESTING ? process.env.AFIP_KEY_TEST : process.env.AFIP_KEY)?.replace(/\\n/g, '\n');
+const CUIT = process.env.AFIP_CUIT?.replace(/[-\s]/g, '');
 
 let tokenCache = null;
 let tokenExpira = null;
