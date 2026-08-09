@@ -104,7 +104,10 @@ router.post('/emitir', async (req, res) => {
 
 router.post('/anular', async (req, res) => {
     try {
-        const { trabajo_id } = req.body;
+        // tipo_factura_original: respaldo para facturas emitidas antes de que
+        // el sistema guardara el tipo en el trabajo. Si el trabajo ya lo tiene
+        // guardado, ese valor manda y se ignora lo que mande el body.
+        const { trabajo_id, tipo_factura_original } = req.body;
 
         const trabajo = await pool.query(
             'SELECT t.*, c.nombre as cliente_nombre, c.cuit as cliente_cuit, c.condicion_iva FROM trabajos t JOIN clientes c ON t.cliente_id = c.id WHERE t.id = $1',
@@ -116,8 +119,9 @@ router.post('/anular', async (req, res) => {
         }
 
         const t = trabajo.rows[0];
+        const tipoFactura = t.tipo_factura || tipo_factura_original;
 
-        if (!t.nro_factura || !t.tipo_factura) {
+        if (!t.nro_factura || !tipoFactura) {
             return res.status(400).json({ error: 'El trabajo no tiene una factura emitida' });
         }
         if (t.anulada) {
@@ -125,7 +129,6 @@ router.post('/anular', async (req, res) => {
         }
 
         const docNro = parseInt(t.cliente_cuit.replace(/[-\s]/g, ''));
-        const tipoFactura = t.tipo_factura;
         const nroOriginal = parseInt(t.nro_factura);
 
         const { token, sign } = await getToken();
@@ -197,8 +200,8 @@ router.post('/anular', async (req, res) => {
 
         if (det.Resultado === 'A') {
             await pool.query(
-                'UPDATE trabajos SET anulada = true, nro_nota_credito = $1 WHERE id = $2',
-                [`${nuevoNro}`, trabajo_id]
+                'UPDATE trabajos SET anulada = true, nro_nota_credito = $1, tipo_factura = $2 WHERE id = $3',
+                [`${nuevoNro}`, tipoFactura, trabajo_id]
             );
 
             res.json({
