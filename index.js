@@ -13,6 +13,7 @@ const authRouter = require('./routes/auth');
 const clientesRouter = require('./routes/clientes');
 const trabajosRouter = require('./routes/trabajos');
 const facturasRouter = require('./routes/facturas');
+const migrate = require('./migrate');
 
 app.use('/facturas', verificarToken, facturasRouter);
 app.use('/auth', authRouter);
@@ -21,6 +22,13 @@ app.use('/trabajos', verificarToken, trabajosRouter);
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-    console.log(`Servidor corriendo en puerto ${PORT}`);
-});
+migrate()
+    .then(() => {
+        app.listen(PORT, () => {
+            console.log(`Servidor corriendo en puerto ${PORT}`);
+        });
+    })
+    .catch(error => {
+        console.error('Error al migrar la base de datos:', error);
+        process.exit(1);
+    });
