@@ -2,12 +2,20 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const rateLimit = require('express-rate-limit');
 
-// Usuario hardcodeado por ahora
-const USUARIO = 'Walter';
-const PASSWORD_HASH = bcrypt.hashSync('0161', 10);
+const USUARIO = process.env.AUTH_USUARIO;
+const PASSWORD_HASH = process.env.AUTH_PASSWORD_HASH;
 
-router.post('/login', async (req, res) => {
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Demasiados intentos, intentá de nuevo más tarde' }
+});
+
+router.post('/login', loginLimiter, async (req, res) => {
     const { usuario, password } = req.body;
 
     if (usuario !== USUARIO) {
@@ -19,7 +27,7 @@ router.post('/login', async (req, res) => {
         return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
-    const token = jwt.sign({ usuario }, process.env.JWT_SECRET || 'secreto123', { expiresIn: '8h' });
+    const token = jwt.sign({ usuario }, process.env.JWT_SECRET, { expiresIn: '8h' });
     res.json({ token });
 });
 

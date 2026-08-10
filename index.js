@@ -4,8 +4,20 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
+for (const v of ['JWT_SECRET', 'AUTH_USUARIO', 'AUTH_PASSWORD_HASH']) {
+    if (!process.env[v]) {
+        console.error(`Falta la variable de entorno requerida: ${v}`);
+        process.exit(1);
+    }
+}
+
+const corsOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map(o => o.trim())
+    .filter(Boolean);
+
 const app = express();
-app.use(cors());
+app.use(cors({ origin: corsOrigins.length ? corsOrigins : false }));
 app.use(express.json());
 
 const verificarToken = require('./middleware/auth');
