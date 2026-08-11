@@ -79,7 +79,7 @@ router.post('/emitir', async (req, res) => {
 
         if (det.Resultado === 'A') {
             await pool.query(
-                'UPDATE trabajos SET nro_factura = $1, tipo_factura = $2 WHERE id = $3',
+                'UPDATE trabajos SET nro_factura = $1, tipo_factura = $2, anulada = false, nro_nota_credito = NULL WHERE id = $3',
                 [`${nuevoNro}`, tipo_factura, trabajo_id]
             );
 
