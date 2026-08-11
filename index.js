@@ -17,6 +17,7 @@ const corsOrigins = (process.env.CORS_ORIGINS || '')
     .filter(Boolean);
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(cors({ origin: corsOrigins.length ? corsOrigins : false }));
 app.use(express.json());
 
