@@ -14,15 +14,17 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const { nombre, cuit, telefono, condicion_iva } = req.body;
-        
-        const cuitLimpio = cuit.replace(/[-\s]/g, '')
-        if (!/^\d{11}$/.test(cuitLimpio)) {
+
+        const cuitLimpio = (cuit || '').replace(/[-\s]/g, '')
+        if (cuitLimpio && !/^\d{11}$/.test(cuitLimpio)) {
             return res.status(400).json({ error: 'El CUIT debe tener exactamente 11 dígitos' })
         }
 
         const existe = await pool.query(
-            'SELECT id FROM clientes WHERE LOWER(nombre) = LOWER($1) OR cuit = $2',
-            [nombre, cuitLimpio]
+            cuitLimpio
+                ? 'SELECT id FROM clientes WHERE LOWER(nombre) = LOWER($1) OR cuit = $2'
+                : 'SELECT id FROM clientes WHERE LOWER(nombre) = LOWER($1)',
+            cuitLimpio ? [nombre, cuitLimpio] : [nombre]
         );
         
         if (existe.rows.length > 0) {
@@ -54,8 +56,8 @@ router.put('/:id', async (req, res) => {
         const { id } = req.params;
         const { nombre, cuit, telefono, condicion_iva } = req.body;
 
-        const cuitLimpio = cuit.replace(/[-\s]/g, '')
-        if (!/^\d{11}$/.test(cuitLimpio)) {
+        const cuitLimpio = (cuit || '').replace(/[-\s]/g, '')
+        if (cuitLimpio && !/^\d{11}$/.test(cuitLimpio)) {
             return res.status(400).json({ error: 'El CUIT debe tener exactamente 11 dígitos' })
         }
 
