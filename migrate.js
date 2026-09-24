@@ -19,6 +19,13 @@ async function migrate() {
         ALTER TABLE clientes
             ADD COLUMN IF NOT EXISTS estudio_contable_id INTEGER REFERENCES estudios_contables(id)
     `);
+
+    await pool.query(`
+        ALTER TABLE clientes DROP CONSTRAINT IF EXISTS clientes_estudio_contable_id_fkey;
+        ALTER TABLE clientes
+            ADD CONSTRAINT clientes_estudio_contable_id_fkey
+            FOREIGN KEY (estudio_contable_id) REFERENCES estudios_contables(id) ON DELETE SET NULL
+    `);
 }
 
 module.exports = migrate;

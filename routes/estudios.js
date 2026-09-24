@@ -56,7 +56,7 @@ router.delete('/:id', async (req, res) => {
         await pool.query('DELETE FROM estudios_contables WHERE id = $1', [id]);
         res.json({ mensaje: 'Estudio eliminado' });
     } catch (error) {
-        res.status(500).json({ error: 'No se puede eliminar un estudio con clientes asociados' });
+        res.status(500).json({ error: error.message });
     }
 });
 
