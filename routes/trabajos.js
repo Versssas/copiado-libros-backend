@@ -6,9 +6,11 @@ const pool = require('../db');
 router.get('/', async (req, res) => {
     try {
         const resultado = await pool.query(`
-            SELECT t.*, c.nombre as cliente_nombre, c.telefono as cliente_telefono, c.cuit as cliente_cuit
-            FROM trabajos t 
-            JOIN clientes c ON t.cliente_id = c.id 
+            SELECT t.*, c.nombre as cliente_nombre, c.telefono as cliente_telefono, c.cuit as cliente_cuit,
+                   e.nombre as estudio_contable_nombre
+            FROM trabajos t
+            JOIN clientes c ON t.cliente_id = c.id
+            LEFT JOIN estudios_contables e ON e.id = c.estudio_contable_id
             ORDER BY t.id
         `);
         res.json(resultado.rows);
