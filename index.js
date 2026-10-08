@@ -27,6 +27,7 @@ const clientesRouter = require('./routes/clientes');
 const trabajosRouter = require('./routes/trabajos');
 const facturasRouter = require('./routes/facturas');
 const estudiosRouter = require('./routes/estudios');
+const integracionRouter = require('./routes/integracion');
 const migrate = require('./migrate');
 
 app.use('/facturas', verificarToken, facturasRouter);
@@ -34,6 +35,7 @@ app.use('/auth', authRouter);
 app.use('/clientes', verificarToken, clientesRouter);
 app.use('/trabajos', verificarToken, trabajosRouter);
 app.use('/estudios', verificarToken, estudiosRouter);
+app.use('/integracion', integracionRouter);
 
 const PORT = process.env.PORT || 3000;
 
