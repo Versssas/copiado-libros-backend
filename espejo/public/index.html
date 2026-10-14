@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Espejo de Documentos</title>
+<style>
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-sunken: #eceef2;
+  --ink: #1c2030;
+  --ink-soft: #656c7e;
+  --rule: #dde1e8;
+  --accent: #3a4ad1;
+  --accent-soft: #eef0fd;
+  --good: #1a7f4e;
+  --warn: #b23a1f;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171e;
+    --surface: #1e212b;
+    --surface-sunken: #171922;
+    --ink: #e7e9f0;
+    --ink-soft: #9499ab;
+    --rule: #2d313e;
+    --accent: #8690ff;
+    --accent-soft: #262b45;
+    --good: #4fcf94;
+    --warn: #ff8a6a;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; min-width: 0; }
+html, body { margin: 0; padding: 0; }
+img { max-width: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  padding-inline: 16px;
+  padding-block: 24px;
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+header {
+  margin-bottom: 20px;
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.4rem, 4vw, 1.9rem);
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+  text-wrap: balance;
+}
+
+.sub {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin: 0;
+  max-width: 56ch;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.dropzone {
+  border: 1.5px dashed var(--rule);
+  border-radius: 10px;
+  padding: 28px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+  background: var(--surface-sunken);
+}
+
+.dropzone:hover, .dropzone.drag {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.dropzone svg { color: var(--ink-soft); margin-bottom: 8px; }
+.dropzone.drag svg { color: var(--accent); }
+
+.dropzone p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.dropzone .accent-line {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+input[type="file"] { display: none; }
+
+.filelist {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filerow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-align: left;
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  width: 100%;
+}
+
+.filerow:hover { background: var(--surface-sunken); }
+.filerow.active { background: var(--accent-soft); border-color: var(--accent); }
+
+.filerow .ext {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  background: var(--surface-sunken);
+  border-radius: 4px;
+  padding: 2px 5px;
+  flex-shrink: 0;
+}
+
+.filerow.active .ext { background: var(--surface); }
+
+.filerow .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.filerow .remove {
+  flex-shrink: 0;
+  opacity: 0;
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.filerow:hover .remove { opacity: 1; }
+
+.hint {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.hint strong { color: var(--ink); }
+
+.viewer {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  min-height: 560px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.viewer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+}
+
+.viewer-bar .doc-info {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.viewer-bar .doc-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viewer-bar .doc-meta {
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.btn-download {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 7px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-download:hover { opacity: 0.9; }
+
+.viewer-body {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+  position: relative;
+}
+
+.empty-state {
+  height: 100%;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--ink-soft);
+  text-align: center;
+  padding: 24px;
+}
+
+.empty-state svg { color: var(--rule); }
+.empty-state p { margin: 0; font-size: 14px; max-width: 32ch; }
+
+.pdf-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: var(--surface-sunken);
+}
+
+.pdf-pages canvas {
+  max-width: 100%;
+  height: auto;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+  background: white;
+}
+
+.img-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 500px;
+  padding: 20px;
+  background:
+    linear-gradient(45deg, var(--surface-sunken) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--surface-sunken) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--surface-sunken) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--surface-sunken) 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+.img-wrap img {
+  max-width: 100%;
+  max-height: 72vh;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.2);
+}
+
+.docx-body, .text-body {
+  padding: 36px 44px;
+  max-width: 760px;
+  margin: 0 auto;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.docx-body p { margin: 0 0 1em; }
+.docx-body h1, .docx-body h2, .docx-body h3 { font-family: var(--font-display); }
+.docx-body img { max-width: 100%; }
+.docx-body table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+.docx-body td, .docx-body th { border: 1px solid var(--rule); padding: 6px 10px; font-size: 14px; }
+
+.text-body {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.status-line.error { color: var(--warn); }
+
+.spinner {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--rule);
+  border-top-color: var(--accent);
+  animation: spin 700ms linear infinite;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+footer.note {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+</style>
+
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <h1>Espejo de Documentos</h1>
+    <p class="sub">Abrí un PDF, un Word, una imagen o un archivo de texto, lo ves acá mismo y lo descargás de vuelta. Nada se sube a ningún servidor — el archivo nunca sale de tu navegador.</p>
+  </header>
+
+  <div class="layout">
+    <div class="panel">
+      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Elegir o soltar un archivo para abrir">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p><span class="accent-line">Soltá un archivo acá</span><br>o hacé clic para elegirlo</p>
+        <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.txt,.md,.csv,.json,.png,.jpg,.jpeg,.gif,.webp,.svg">
+      </div>
+
+      <div class="filelist" id="filelist" hidden></div>
+
+      <div class="hint">
+        <strong>Soporta:</strong> PDF, Word (.docx), imágenes (PNG/JPG/GIF/WEBP/SVG), y texto plano (.txt, .md, .csv, .json).<br><br>
+        Los <code>.doc</code> antiguos y otros formatos se muestran con su información básica, sin vista previa de contenido, pero igual se pueden descargar.
+      </div>
+    </div>
+
+    <div class="viewer">
+      <div class="viewer-bar" id="viewerBar" hidden>
+        <span class="doc-info">
+          <span class="doc-name" id="docName"></span>
+          <span class="doc-meta" id="docMeta"></span>
+        </span>
+        <button type="button" class="btn-download" id="downloadBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Descargar
+        </button>
+      </div>
+      <div class="viewer-body" id="viewerBody">
+        <div class="empty-state">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <p>Todavía no abriste ningún documento. Elegí uno de la izquierda para verlo acá.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="note">El visor corre enteramente en tu navegador. Cerrar o recargar la página descarta los archivos.</footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
+  var dropzone = document.getElementById('dropzone');
+  var fileInput = document.getElementById('fileInput');
+  var filelistEl = document.getElementById('filelist');
+  var viewerBody = document.getElementById('viewerBody');
+  var viewerBar = document.getElementById('viewerBar');
+  var docNameEl = document.getElementById('docName');
+  var docMetaEl = document.getElementById('docMeta');
+  var downloadBtn = document.getElementById('downloadBtn');
+
+  var docs = [];
+  var activeId = null;
+  var seq = 0;
+
+  function fmtSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function extOf(name) {
+    var m = /\.([a-z0-9]+)$/i.exec(name);
+    return m ? m[1].toLowerCase() : '';
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function addFiles(fileList) {
+    var arr = Array.prototype.slice.call(fileList);
+    arr.forEach(function (file) {
+      var id = 'd' + (seq++);
+      docs.push({ id: id, file: file, ext: extOf(file.name) });
+    });
+    renderFilelist();
+    if (arr.length) openDoc(docs[docs.length - arr.length].id);
+  }
+
+  function removeDoc(id, evt) {
+    if (evt) evt.stopPropagation();
+    docs = docs.filter(function (d) { return d.id !== id; });
+    renderFilelist();
+    if (activeId === id) {
+      activeId = null;
+      if (docs.length) {
+        openDoc(docs[docs.length - 1].id);
+      } else {
+        showEmpty();
+      }
+    }
+  }
+
+  function renderFilelist() {
+    if (!docs.length) {
+      filelistEl.hidden = true;
+      filelistEl.innerHTML = '';
+      return;
+    }
+    filelistEl.hidden = false;
+    filelistEl.innerHTML = '';
+    docs.forEach(function (d) {
+      var row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'filerow' + (d.id === activeId ? ' active' : '');
+      row.innerHTML =
+        '<span class="ext">' + (d.ext || '?') + '</span>' +
+        '<span class="name">' + escapeHtml(d.file.name) + '</span>' +
+        '<button type="button" class="remove" aria-label="Quitar ' + escapeHtml(d.file.name) + '">&times;</button>';
+      row.addEventListener('click', function () { openDoc(d.id); });
+      row.querySelector('.remove').addEventListener('click', function (e) { removeDoc(d.id, e); });
+      filelistEl.appendChild(row);
+    });
+  }
+
+  function showEmpty() {
+    viewerBar.hidden = true;
+    viewerBody.innerHTML =
+      '<div class="empty-state">' +
+      '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+      '<p>Todavía no abriste ningún documento. Elegí uno de la izquierda para verlo acá.</p>' +
+      '</div>';
+  }
+
+  function showLoading() {
+    viewerBody.innerHTML = '<div class="status-line"><span class="spinner"></span> Abriendo documento…</div>';
+  }
+
+  function showError(msg) {
+    viewerBody.innerHTML = '<div class="status-line error">⚠ ' + escapeHtml(msg) + '</div>';
+  }
+
+  function openDoc(id) {
+    var d = docs.find(function (x) { return x.id === id; });
+    if (!d) return;
+    activeId = id;
+    renderFilelist();
+
+    viewerBar.hidden = false;
+    docNameEl.textContent = d.file.name;
+    docMetaEl.textContent = (d.ext || 'archivo').toUpperCase() + ' · ' + fmtSize(d.file.size);
+    showLoading();
+
+    var ext = d.ext;
+    if (ext === 'pdf') {
+      renderPdf(d.file);
+    } else if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].indexOf(ext) !== -1) {
+      renderImage(d.file);
+    } else if (ext === 'docx') {
+      renderDocx(d.file);
+    } else if (['txt', 'md', 'csv', 'json', 'js', 'css', 'html', 'xml', 'yml', 'yaml'].indexOf(ext) !== -1) {
+      renderText(d.file);
+    } else {
+      renderUnsupported(d.file);
+    }
+  }
+
+  function renderImage(file) {
+    var url = URL.createObjectURL(file);
+    viewerBody.innerHTML = '<div class="img-wrap"><img src="' + url + '" alt="' + escapeHtml(file.name) + '"></div>';
+  }
+
+  function renderText(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      viewerBody.innerHTML = '<div class="text-body"></div>';
+      viewerBody.querySelector('.text-body').textContent = reader.result;
+    };
+    reader.onerror = function () { showError('No se pudo leer el archivo de texto.'); };
+    reader.readAsText(file);
+  }
+
+  function renderDocx(file) {
+    if (!window.mammoth) { showError('No se pudo cargar el conversor de Word.'); return; }
+    var reader = new FileReader();
+    reader.onload = function () {
+      mammoth.convertToHtml({ arrayBuffer: reader.result })
+        .then(function (result) {
+          viewerBody.innerHTML = '<div class="docx-body">' + result.value + '</div>';
+        })
+        .catch(function () { showError('No se pudo convertir este documento de Word.'); });
+    };
+    reader.onerror = function () { showError('No se pudo leer el archivo.'); };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function renderPdf(file) {
+    if (!window.pdfjsLib) { showError('No se pudo cargar el visor de PDF.'); return; }
+    var reader = new FileReader();
+    reader.onload = function () {
+      var loadingTask = pdfjsLib.getDocument({ data: reader.result });
+      loadingTask.promise.then(function (pdf) {
+        var container = document.createElement('div');
+        container.className = 'pdf-pages';
+        viewerBody.innerHTML = '';
+        viewerBody.appendChild(container);
+
+        var renderPage = function (num) {
+          return pdf.getPage(num).then(function (page) {
+            var scale = Math.min(1.6, (viewerBody.clientWidth - 40) / page.getViewport({ scale: 1 }).width);
+            var viewport = page.getViewport({ scale: scale });
+            var canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            container.appendChild(canvas);
+            return page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
+          });
+        };
+
+        var chain = Promise.resolve();
+        var maxPages = Math.min(pdf.numPages, 40);
+        for (var i = 1; i <= maxPages; i++) {
+          (function (n) { chain = chain.then(function () { return renderPage(n); }); })(i);
+        }
+        if (pdf.numPages > maxPages) {
+          chain.then(function () {
+            var note = document.createElement('p');
+            note.style.cssText = 'color:var(--ink-soft);font-size:12px;text-align:center;';
+            note.textContent = 'Mostrando las primeras ' + maxPages + ' de ' + pdf.numPages + ' páginas.';
+            container.appendChild(note);
+          });
+        }
+        chain.catch(function () { showError('Hubo un problema dibujando alguna página del PDF.'); });
+      }).catch(function () {
+        showError('No se pudo abrir este PDF. Puede estar dañado o protegido.');
+      });
+    };
+    reader.onerror = function () { showError('No se pudo leer el archivo.'); };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function renderUnsupported(file) {
+    viewerBody.innerHTML =
+      '<div class="empty-state">' +
+      '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+      '<p><strong>' + escapeHtml(file.name) + '</strong><br>Este tipo de archivo no tiene vista previa, pero se puede descargar igual.<br>' + fmtSize(file.size) + '</p>' +
+      '</div>';
+  }
+
+  // Descarga el mismo archivo que se eligió, directo desde memoria del navegador.
+  downloadBtn.addEventListener('click', function () {
+    var d = docs.find(function (x) { return x.id === activeId; });
+    if (!d) return;
+    var url = URL.createObjectURL(d.file);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = d.file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  });
+
+  // input + drag/drop wiring
+  dropzone.addEventListener('click', function () { fileInput.click(); });
+  dropzone.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+  });
+  fileInput.addEventListener('change', function (e) { addFiles(e.target.files); fileInput.value = ''; });
+
+  ['dragenter', 'dragover'].forEach(function (evt) {
+    dropzone.addEventListener(evt, function (e) {
+      e.preventDefault(); e.stopPropagation();
+      dropzone.classList.add('drag');
+    });
+  });
+  ['dragleave', 'drop'].forEach(function (evt) {
+    dropzone.addEventListener(evt, function (e) {
+      e.preventDefault(); e.stopPropagation();
+      dropzone.classList.remove('drag');
+    });
+  });
+  dropzone.addEventListener('drop', function (e) {
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+      addFiles(e.dataTransfer.files);
+    }
+  });
+})();
+</script>
+</body>
+</html>
