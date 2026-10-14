@@ -368,6 +368,82 @@ footer.note {
   color: var(--ink-soft);
   text-align: center;
 }
+
+.margin-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 12px;
+  color: var(--ink-soft);
+  background: var(--surface-sunken);
+}
+
+.margin-bar .btn-reset {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.margin-bar .btn-reset:hover { background: var(--surface); }
+
+.page-wrap {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.margin-shade {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.38);
+  pointer-events: none;
+}
+
+.margin-shade.top, .margin-shade.bottom { left: 0; right: 0; height: 0; }
+.margin-shade.top { top: 0; }
+.margin-shade.bottom { bottom: 0; }
+.margin-shade.left, .margin-shade.right { top: 0; bottom: 0; width: 0; }
+.margin-shade.left { left: 0; }
+.margin-shade.right { right: 0; }
+
+.margin-line {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+}
+
+.margin-line.top, .margin-line.bottom {
+  left: 0; right: 0; height: 14px;
+  cursor: row-resize;
+  align-items: center;
+}
+
+.margin-line.left, .margin-line.right {
+  top: 0; bottom: 0; width: 14px;
+  cursor: col-resize;
+  justify-content: center;
+}
+
+.margin-line::before {
+  content: '';
+  background: var(--accent);
+  opacity: 0.8;
+  border-radius: 2px;
+}
+
+.margin-line.top::before, .margin-line.bottom::before { width: 100%; height: 2px; }
+.margin-line.left::before, .margin-line.right::before { height: 100%; width: 2px; }
+
+.margin-line:hover::before, .margin-line.dragging::before { opacity: 1; }
+.margin-line.dragging::before { background: var(--good); }
 </style>
 
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -375,6 +451,7 @@ footer.note {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 </head>
 <body>
 
@@ -411,6 +488,10 @@ footer.note {
           Descargar
         </button>
       </div>
+      <div class="margin-bar" id="marginBar" hidden>
+        <span>Arrastrá los bordes de la hoja para ajustar los márgenes. Se recortan al descargar.</span>
+        <button type="button" class="btn-reset" id="marginResetBtn">Restablecer márgenes</button>
+      </div>
       <div class="viewer-body" id="viewerBody">
         <div class="empty-state">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -439,10 +520,117 @@ footer.note {
   var docNameEl = document.getElementById('docName');
   var docMetaEl = document.getElementById('docMeta');
   var downloadBtn = document.getElementById('downloadBtn');
+  var marginBar = document.getElementById('marginBar');
+  var marginResetBtn = document.getElementById('marginResetBtn');
 
   var docs = [];
   var activeId = null;
   var seq = 0;
+
+  var CROPPABLE_RASTER = ['png', 'jpg', 'jpeg', 'webp'];
+  var margins = { top: 0, right: 0, bottom: 0, left: 0 };
+  var overlays = []; // { target, shadeTop, shadeBottom, shadeLeft, shadeRight, lineTop, lineBottom, lineLeft, lineRight, w, h }
+  var dragState = null;
+
+  function resetMargins() {
+    margins = { top: 0, right: 0, bottom: 0, left: 0 };
+    layoutAllOverlays();
+  }
+
+  function hasMargins() {
+    return margins.top > 0 || margins.right > 0 || margins.bottom > 0 || margins.left > 0;
+  }
+
+  function wrapWithMarginOverlay(target) {
+    var wrap = document.createElement('div');
+    wrap.className = 'page-wrap';
+    wrap.appendChild(target);
+
+    var entry = { target: target, wrap: wrap, w: 0, h: 0 };
+    ['top', 'bottom', 'left', 'right'].forEach(function (side) {
+      var shade = document.createElement('div');
+      shade.className = 'margin-shade ' + side;
+      wrap.appendChild(shade);
+      entry['shade' + side[0].toUpperCase() + side.slice(1)] = shade;
+    });
+    ['top', 'bottom', 'left', 'right'].forEach(function (side) {
+      var line = document.createElement('div');
+      line.className = 'margin-line ' + side;
+      line.dataset.side = side;
+      wrap.appendChild(line);
+      entry['line' + side[0].toUpperCase() + side.slice(1)] = line;
+      line.addEventListener('pointerdown', function (e) { startDrag(e, entry, side); });
+    });
+
+    overlays.push(entry);
+    return wrap;
+  }
+
+  function layoutOverlay(entry) {
+    var rect = entry.target.getBoundingClientRect();
+    var w = rect.width, h = rect.height;
+    if (!w || !h) return;
+    entry.w = w; entry.h = h;
+    var mt = margins.top * h, mb = margins.bottom * h, ml = margins.left * w, mr = margins.right * w;
+    entry.shadeTop.style.height = mt + 'px';
+    entry.shadeBottom.style.height = mb + 'px';
+    entry.shadeLeft.style.width = ml + 'px';
+    entry.shadeRight.style.width = mr + 'px';
+    entry.lineTop.style.top = (mt - 7) + 'px';
+    entry.lineBottom.style.bottom = (mb - 7) + 'px';
+    entry.lineLeft.style.left = (ml - 7) + 'px';
+    entry.lineRight.style.right = (mr - 7) + 'px';
+  }
+
+  function layoutAllOverlays() {
+    overlays.forEach(layoutOverlay);
+  }
+
+  function clearOverlays() {
+    overlays = [];
+  }
+
+  function startDrag(e, entry, side) {
+    e.preventDefault();
+    var axis = (side === 'top' || side === 'bottom') ? 'y' : 'x';
+    var size = axis === 'y' ? entry.h : entry.w;
+    if (!size) return;
+    var opposite = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' }[side];
+    dragState = {
+      side: side,
+      axis: axis,
+      size: size,
+      start: axis === 'y' ? e.clientY : e.clientX,
+      startFrac: margins[side],
+      maxFrac: 0.9 - margins[opposite]
+    };
+    e.target.classList.add('dragging');
+    document.addEventListener('pointermove', onDragMove);
+    document.addEventListener('pointerup', onDragEnd);
+  }
+
+  function onDragMove(e) {
+    if (!dragState) return;
+    var pos = dragState.axis === 'y' ? e.clientY : e.clientX;
+    var delta = pos - dragState.start;
+    // bottom/right grow as you drag toward the opposite direction
+    if (dragState.side === 'bottom' || dragState.side === 'right') delta = -delta;
+    var frac = dragState.startFrac + delta / dragState.size;
+    frac = Math.max(0, Math.min(dragState.maxFrac, frac));
+    margins[dragState.side] = frac;
+    layoutAllOverlays();
+  }
+
+  function onDragEnd() {
+    dragState = null;
+    document.querySelectorAll('.margin-line.dragging').forEach(function (el) { el.classList.remove('dragging'); });
+    document.removeEventListener('pointermove', onDragMove);
+    document.removeEventListener('pointerup', onDragEnd);
+  }
+
+  window.addEventListener('resize', function () { layoutAllOverlays(); });
+
+  marginResetBtn.addEventListener('click', resetMargins);
 
   function fmtSize(bytes) {
     if (bytes < 1024) return bytes + ' B';
@@ -509,6 +697,8 @@ footer.note {
 
   function showEmpty() {
     viewerBar.hidden = true;
+    marginBar.hidden = true;
+    clearOverlays();
     viewerBody.innerHTML =
       '<div class="empty-state">' +
       '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
@@ -533,9 +723,12 @@ footer.note {
     viewerBar.hidden = false;
     docNameEl.textContent = d.file.name;
     docMetaEl.textContent = (d.ext || 'archivo').toUpperCase() + ' · ' + fmtSize(d.file.size);
+    clearOverlays();
+    resetMargins();
     showLoading();
 
     var ext = d.ext;
+    marginBar.hidden = !(ext === 'pdf' || CROPPABLE_RASTER.indexOf(ext) !== -1);
     if (ext === 'pdf') {
       renderPdf(d.file);
     } else if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].indexOf(ext) !== -1) {
@@ -551,7 +744,19 @@ footer.note {
 
   function renderImage(file) {
     var url = URL.createObjectURL(file);
-    viewerBody.innerHTML = '<div class="img-wrap"><img src="' + url + '" alt="' + escapeHtml(file.name) + '"></div>';
+    var img = document.createElement('img');
+    img.src = url;
+    img.alt = file.name;
+    var wrapOuter = document.createElement('div');
+    wrapOuter.className = 'img-wrap';
+    viewerBody.innerHTML = '';
+    viewerBody.appendChild(wrapOuter);
+    if (CROPPABLE_RASTER.indexOf(extOf(file.name)) !== -1) {
+      wrapOuter.appendChild(wrapWithMarginOverlay(img));
+      img.addEventListener('load', function () { layoutAllOverlays(); });
+    } else {
+      wrapOuter.appendChild(img);
+    }
   }
 
   function renderText(file) {
@@ -596,7 +801,7 @@ footer.note {
             var canvas = document.createElement('canvas');
             canvas.width = viewport.width;
             canvas.height = viewport.height;
-            container.appendChild(canvas);
+            container.appendChild(wrapWithMarginOverlay(canvas));
             return page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
           });
         };
@@ -614,6 +819,7 @@ footer.note {
             container.appendChild(note);
           });
         }
+        chain.then(layoutAllOverlays);
         chain.catch(function () { showError('Hubo un problema dibujando alguna página del PDF.'); });
       }).catch(function () {
         showError('No se pudo abrir este PDF. Puede estar dañado o protegido.');
@@ -631,18 +837,71 @@ footer.note {
       '</div>';
   }
 
-  // Descarga el mismo archivo que se eligió, directo desde memoria del navegador.
-  downloadBtn.addEventListener('click', function () {
-    var d = docs.find(function (x) { return x.id === activeId; });
-    if (!d) return;
-    var url = URL.createObjectURL(d.file);
+  function triggerDownload(blob, filename) {
+    var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = d.file.name;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function downloadCroppedPdf(file) {
+    file.arrayBuffer().then(function (bytes) {
+      return PDFLib.PDFDocument.load(bytes);
+    }).then(function (pdfDoc) {
+      pdfDoc.getPages().forEach(function (page) {
+        var size = page.getSize();
+        var ml = margins.left * size.width, mr = margins.right * size.width;
+        var mt = margins.top * size.height, mb = margins.bottom * size.height;
+        page.setCropBox(ml, mb, Math.max(1, size.width - ml - mr), Math.max(1, size.height - mt - mb));
+      });
+      return pdfDoc.save();
+    }).then(function (outBytes) {
+      triggerDownload(new Blob([outBytes], { type: 'application/pdf' }), file.name);
+    }).catch(function () {
+      showError('No se pudo recortar el PDF. Se descarga el archivo original.');
+      triggerDownload(file, file.name);
+    });
+  }
+
+  function downloadCroppedImage(file, ext) {
+    var img = new Image();
+    img.onload = function () {
+      var w = img.naturalWidth, h = img.naturalHeight;
+      var sx = margins.left * w, sy = margins.top * h;
+      var sw = Math.max(1, w - sx - margins.right * w);
+      var sh = Math.max(1, h - sy - margins.bottom * h);
+      var canvas = document.createElement('canvas');
+      canvas.width = sw;
+      canvas.height = sh;
+      canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+      var mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      canvas.toBlob(function (blob) {
+        if (blob) triggerDownload(blob, file.name);
+        else triggerDownload(file, file.name);
+      }, mime, 0.95);
+    };
+    img.onerror = function () { triggerDownload(file, file.name); };
+    img.src = URL.createObjectURL(file);
+  }
+
+  // Descarga el archivo elegido; si tiene márgenes ajustados y el formato lo permite, se recorta antes.
+  downloadBtn.addEventListener('click', function () {
+    var d = docs.find(function (x) { return x.id === activeId; });
+    if (!d) return;
+
+    if (hasMargins() && d.ext === 'pdf' && window.PDFLib) {
+      downloadCroppedPdf(d.file);
+      return;
+    }
+    if (hasMargins() && CROPPABLE_RASTER.indexOf(d.ext) !== -1) {
+      downloadCroppedImage(d.file, d.ext);
+      return;
+    }
+    triggerDownload(d.file, d.file.name);
   });
 
   // input + drag/drop wiring
